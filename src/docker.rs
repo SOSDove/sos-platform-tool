@@ -1,20 +1,21 @@
 use std::process::Command;
+use crate::{print_info, print_success};
 
 pub async fn pull_docker_image() -> Result<(), Box<dyn std::error::Error>> {
-    // let output = Command::new("docker")
-    //     .arg("pull")
-    //     .arg("quay.sos.eu/edbafjdu/ansible-encrypt-decrypt")
-    //     .output()?;
+    let output = Command::new("docker")
+        .arg("pull")
+        .arg("quay.sos.eu/edbafjdu/sos-platform-tool")
+        .output()?;
 
-    // if !output.status.success() {
-    //     return Err(format!("Failed to pull image: {}", String::from_utf8_lossy(&output.stderr)).into());
-    // }
+    if !output.status.success() {
+        return Err(format!("Failed to pull image: {}", String::from_utf8_lossy(&output.stderr)).into());
+    }
 
     Ok(())
 }
 
 pub async fn run_docker_container(ext: &str, path: &str, key: &str) -> Result<(), Box<dyn std::error::Error>> {
-    println!("Running Docker");
+    print_info("Running Docker");
 
     let mount_path = format!("{}:/files_to_encrypt/", path);
 
@@ -27,14 +28,14 @@ pub async fn run_docker_container(ext: &str, path: &str, key: &str) -> Result<()
         .arg(mount_path)
         .arg("-e")
         .arg("VAULT_PASSWORD=".to_owned() + key)
-        .arg("67847df60613")
+        .arg("quay.sos.eu/edbafjdu/sos-platform-tool")
         .output()?;
 
     if !output.status.success() {
         return Err(format!("Failed to run container: {}", String::from_utf8_lossy(&output.stderr)).into());
     }
 
-    println!("Value Encrypted/Decrypted");
+    print_info("Value Encrypted/Decrypted");
     Ok(())
 }
 
@@ -61,9 +62,9 @@ pub async fn remove_container_if_present() -> Result<(), Box<dyn std::error::Err
             return Err(format!("Failed to remove container: {}", String::from_utf8_lossy(&remove_output.stderr)).into());
         }
 
-        println!("Container 'encrypt-decrypt-container' removed successfully");
+        print_info("Container 'encrypt-decrypt-container' removed successfully");
     } else {
-        println!("Container 'encrypt-decrypt-container' does not exist.");
+        print_info("Container 'encrypt-decrypt-container' does not exist.");
     }
 
     Ok(())
@@ -105,7 +106,8 @@ pub async fn run_docker_command(action: &str, file_path: &str) -> Result<(), Box
 
     // Handle the command output (for demonstration purposes, we'll just print it)
     if output.status.success() {
-        println!("Success! Output:\n{}", String::from_utf8_lossy(&output.stdout));
+        let success_message = format!("Successfull {} of {}", action, file_path);
+        print_success(&success_message);
     } else {
         eprintln!("Error! Output:\n{}", String::from_utf8_lossy(&output.stderr));
     }
