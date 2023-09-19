@@ -75,10 +75,6 @@ Contributors are welcome! Ensure that your modifications remain compatible with 
 
 ---
 
-Certainly! Here's an additional section that provides a deeper understanding of the tool's workings, with a particular focus on the interactive mode:
-
----
-
 ## How It Works
 
 The SOS Platform Tool is designed with simplicity and ease of use in mind, allowing for both command-line and interactive modes of operation. Here's a brief overview:
