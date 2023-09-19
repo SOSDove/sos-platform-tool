@@ -79,12 +79,12 @@ async fn action_loop() {
             process_single_file(user_input, &file_map).await;
         }
 
-        println!("Would you like to do more? (Type 'I am done' to exit)");
+        println!("Would you like to do more? (X to exit)");
         let mut more = String::new();
         io::stdin().read_line(&mut more).expect("Failed to read line");
         let more = more.trim();
 
-        if more.to_lowercase() == "i am done" {
+        if more.to_lowercase() == "x" {
             break;
         }
     }
@@ -141,9 +141,15 @@ fn interactive_encryption_mode(path: Option<String>, key: Option<String>) -> (St
     let mut new_path = String::new();
     let mut new_key = String::new();
     if path.is_none() {
-        println!("Detected empty path, default is {}, press enter to use default or enter a new path:", "default-path");
+        let current_dir = std::env::current_dir().expect("Could not find current dir").to_str().unwrap().to_string();
+
+        println!("Detected empty path, default is {}, press enter to use default or enter a new path:", current_dir.clone() + "\\input\\");
         io::stdin().read_line(&mut new_path).expect("Failed to read path");
         new_path = new_path.trim().to_string();
+
+        if new_path.is_empty() {
+            new_path = current_dir + "\\input";
+        }
     } else {
         new_path = path.unwrap();
     }

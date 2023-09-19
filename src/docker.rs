@@ -16,8 +16,7 @@ pub async fn pull_docker_image() -> Result<(), Box<dyn std::error::Error>> {
 pub async fn run_docker_container(ext: &str, path: &str, key: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("Running Docker");
 
-    let current_dir = std::env::current_dir()?.to_str().unwrap().to_string();
-    let mount_path = format!("{}:/files_to_encrypt/", current_dir + "/input");
+    let mount_path = format!("{}:/files_to_encrypt/", path);
 
     let output = Command::new("docker")
         .arg("run")
