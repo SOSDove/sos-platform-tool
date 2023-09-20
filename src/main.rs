@@ -55,6 +55,9 @@ async fn main() {
                     Err(e) => eprintln!("Error during running: {:?}", e),
                 }
             }
+            if ext == "run" {
+                interactive_encryption_mode(None, None);
+            }
         }
         _ => {
             println!("No Subcommand Given");
@@ -116,9 +119,9 @@ fn get_encrypt_decrypt_choice() -> &'static str {
     print_prompt("(E)ncrypt or (D)ecrypt?");
     let mut encrypt_decrypt_choice = String::new();
     io::stdin().read_line(&mut encrypt_decrypt_choice).expect("Failed to read line");
-    let encrypt_decrypt_choice = encrypt_decrypt_choice.trim();
+    let encrypt_decrypt_choice = encrypt_decrypt_choice.trim().to_lowercase();
 
-    match encrypt_decrypt_choice {
+    match encrypt_decrypt_choice.as_str() {
         "e" => "encrypt",
         "d" => "decrypt",
         _ => panic!("Invalid choice"), // You can handle this more gracefully if needed
