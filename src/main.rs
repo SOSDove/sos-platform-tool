@@ -1,7 +1,8 @@
 
 use std::path::{Path,PathBuf};
-use std::{fs, io};
+use std::{fs, io, process};
 use std::collections::HashMap;
+use std::process::Command;
 use colored::Colorize;
 
 mod cli;
@@ -10,6 +11,11 @@ mod docker;
 #[tokio::main]
 async fn main() {
     let matches = cli::cli().get_matches();
+
+    if !is_docker_running() {
+        print_error("Docker is not running, the tool will not work without docker, exiting");
+        process::exit(1)
+    }
 
     match matches.subcommand() {
         Some((ext, sub_matches)) => {
@@ -25,52 +31,53 @@ async fn main() {
                     (path.unwrap().to_owned(), key.unwrap().to_owned())
                 };
 
-                    let path = Path::new(&new_path);
-
-                    if validate_path(path) {
-                        print_info("The path provided points to a valid file or directory");
-                     } else {
-                        print_error("The provided path did not point to a valid file or directory");
-                        panic!();
-                     }
-
-                let remove_container_result = docker::remove_container_if_present().await;
-                match remove_container_result {
-                    Ok(_) => print_info("Container removed properly"),
-                    Err(e) => print_error("Error Removing Container"),
-                }
-                let cryptographic_command = build_cryptographic_command(&"Encrypt".to_string(), path, &new_key);
-                let pull_container_result = docker::pull_docker_image().await;
-                match pull_container_result {
-                    Ok(_) => print_info("Pulled image properly"),
-                    Err(e) => eprintln!("Error pulling image: {:?}", e),
-                }
-
-                let encrypt_decrypt_path = docker::run_docker_container(&cryptographic_command.type_of_command, &cryptographic_command.path.to_str().unwrap(), &cryptographic_command.key).await;
-
-                action_loop().await;
-
-                match encrypt_decrypt_path {
-                    Ok(_) => print_info("Ran successfully"),
-                    Err(e) => eprintln!("Error during running: {:?}", e),
-                }
-            }
-            if ext == "run" {
-                interactive_encryption_mode(None, None);
+                run_tool(&new_path, &new_key).await;
             }
         }
         _ => {
             println!("No Subcommand Given");
-            no_subcommand_given();
+            no_subcommand_given().await;
         }// If all subcommands are defined above, anything else is unreachable!()
     }
     docker::remove_container_if_present().await.expect("TODO: panic message");
 }
 
+async fn run_tool(new_path: &String, new_key: &String) {
+    let path = Path::new(&new_path);
+
+    if validate_path(path) {
+        print_info("The path provided points to a valid file or directory");
+    } else {
+        print_error("The provided path did not point to a valid file or directory");
+        panic!();
+    }
+
+    let remove_container_result = docker::remove_container_if_present().await;
+    match remove_container_result {
+        Ok(_) => print_info("Container removed properly"),
+        Err(e) => print_error("Error Removing Container"),
+    }
+    let cryptographic_command = build_cryptographic_command(&"Encrypt".to_string(), path, &new_key);
+    let pull_container_result = docker::pull_docker_image().await;
+    match pull_container_result {
+        Ok(_) => print_info("Pulled image properly"),
+        Err(e) => eprintln!("Error pulling image: {:?}", e),
+    }
+
+    let encrypt_decrypt_path = docker::run_docker_container(&cryptographic_command.type_of_command, &cryptographic_command.path.to_str().unwrap(), &cryptographic_command.key).await;
+
+    action_loop().await;
+
+    match encrypt_decrypt_path {
+        Ok(_) => print_info("Ran successfully"),
+        Err(e) => eprintln!("Error during running: {:?}", e),
+    }
+}
+
 async fn action_loop() {
     loop {
         let current_dir = std::env::current_dir().expect("Could not read current dir").to_str().unwrap().to_string();
-        let mount_path = current_dir + "/input";
+        let mount_path = current_dir;
         let file_map = list_files_in_directory(&mount_path).expect("Could not list files");
 
         let mut user_input = String::new();
@@ -137,8 +144,10 @@ fn build_cryptographic_command(ext: &String, path: &Path, key: &String) -> Crypt
 }
 
 
-fn no_subcommand_given() {
-
+async fn no_subcommand_given() {
+    let (new_path, new_key) =
+            interactive_encryption_mode(None, None);
+    run_tool(&new_path, &new_key).await;
 }
 
 fn interactive_encryption_mode(path: Option<String>, key: Option<String>) -> (String, String) {
@@ -146,13 +155,13 @@ fn interactive_encryption_mode(path: Option<String>, key: Option<String>) -> (St
     let mut new_key = String::new();
     if path.is_none() {
         let current_dir = std::env::current_dir().expect("Could not find current dir").to_str().unwrap().to_string();
-        let prompt_message = format!("Detected empty path, default is {}, press enter to use default or enter a new path:", current_dir.clone() + "/input\\");
+        let prompt_message = format!("Detected empty path, default is {}, press enter to use default or enter a new path:", current_dir.clone());
         print_prompt(&prompt_message);
         io::stdin().read_line(&mut new_path).expect("Failed to read path");
         new_path = new_path.trim().to_string();
 
         if new_path.is_empty() {
-            new_path = current_dir + "/input";
+            new_path = current_dir;
         }
     } else {
         new_path = path.unwrap();
@@ -193,6 +202,16 @@ fn list_files_in_directory(dir_path: &str) -> std::io::Result<HashMap<u32, Strin
     }
 
     Ok(file_map)
+}
+
+fn is_docker_running() -> bool {
+    print_info("Checking if Docker is running");
+    let output = Command::new("docker")
+        .arg("info")
+        .output()
+        .expect("Failed to execute command");
+
+    output.status.success()
 }
 
 fn validate_path(p: &Path) -> bool {

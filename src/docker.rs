@@ -2,6 +2,7 @@ use std::process::Command;
 use crate::{print_info, print_success};
 
 pub async fn pull_docker_image() -> Result<(), Box<dyn std::error::Error>> {
+    print_info("Pulling Docker Image");
     let output = Command::new("docker")
         .arg("pull")
         .arg("quay.sos.eu/edbafjdu/sos-platform-tool")
