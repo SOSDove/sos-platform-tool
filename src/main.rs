@@ -84,6 +84,10 @@ async fn action_loop() {
         io::stdin().read_line(&mut user_input).expect("Failed to read line");
         let user_input = user_input.trim();
 
+        if user_input.to_lowercase() == "x" {
+            print_info("Exiting App");
+            break;
+        }
         if user_input.to_lowercase() == "all" || user_input == "a" {
             process_all_files(&file_map).await;
         } else {
@@ -96,6 +100,7 @@ async fn action_loop() {
         let more = more.trim();
 
         if more.to_lowercase() == "x" {
+            print_info("Exiting App");
             break;
         }
     }
@@ -188,6 +193,7 @@ fn list_files_in_directory(dir_path: &str) -> std::io::Result<HashMap<u32, Strin
     print_prompt("Select Files to Encrypt or Decrypt");
     print_prompt("(A) for all");
     print_prompt("Number for specific file");
+    print_prompt("(X) for exit");
 
     for entry in entries {
         let entry = entry?;
