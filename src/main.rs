@@ -146,13 +146,13 @@ fn interactive_encryption_mode(path: Option<String>, key: Option<String>) -> (St
     let mut new_key = String::new();
     if path.is_none() {
         let current_dir = std::env::current_dir().expect("Could not find current dir").to_str().unwrap().to_string();
-        let prompt_message = format!("Detected empty path, default is {}, press enter to use default or enter a new path:", current_dir.clone() + "\\input\\");
+        let prompt_message = format!("Detected empty path, default is {}, press enter to use default or enter a new path:", current_dir.clone() + "/input\\");
         print_prompt(&prompt_message);
         io::stdin().read_line(&mut new_path).expect("Failed to read path");
         new_path = new_path.trim().to_string();
 
         if new_path.is_empty() {
-            new_path = current_dir + "\\input";
+            new_path = current_dir + "/input";
         }
     } else {
         new_path = path.unwrap();
