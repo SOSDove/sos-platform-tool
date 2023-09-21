@@ -1,5 +1,6 @@
 use std::process::Command;
-use crate::{print_info, print_success};
+use crate::{print_info};
+use crate::messages::print_success;
 
 pub async fn pull_docker_image() -> Result<(), Box<dyn std::error::Error>> {
     print_info("Pulling Docker Image");
@@ -102,10 +103,7 @@ pub async fn run_docker_command(action: &str, file_path: &str) -> Result<(), Box
                 .output()?
         }
     };
-    // Construct the docker command
 
-
-    // Handle the command output (for demonstration purposes, we'll just print it)
     if output.status.success() {
         let success_message = format!("Successfull {} of {}", action, file_path);
         print_success(&success_message);
