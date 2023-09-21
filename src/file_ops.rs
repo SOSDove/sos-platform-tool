@@ -33,7 +33,7 @@ pub fn list_files_in_directory(dir_path: &str) -> std::io::Result<HashMap<u32, S
 
     print_prompt("Select Files to Encrypt or Decrypt");
     print_prompt("(A) for all");
-    print_prompt("Number for specific file");
+    print_prompt("Number for specific file, comma separated for multiple files");
     print_prompt("(X) for exit");
 
     for entry in entries {
