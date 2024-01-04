@@ -2,15 +2,15 @@ use std::collections::HashMap;
 use std::io;
 use crate::{docker};
 use crate::cli::get_encrypt_decrypt_choice;
-use crate::file_ops::{list_files_in_directory, parse_str_to_u32};
-use crate::messages::{print_error, print_info, print_prompt};
+use crate::file_ops::{find_file_in_folder, list_files_in_directory};
+use crate::messages::{print_error, print_info, print_prompt, print_selection_option};
 
-pub async fn action_loop() {
+pub async fn action_loop(input_dir: &str) {
     loop {
-        let current_dir = std::env::current_dir().expect("Could not read current dir").to_str().unwrap().to_string();
-        let mount_path = current_dir;
-        let file_map = list_files_in_directory(&mount_path).expect("Could not list files");
-
+        let file_map = list_files_in_directory(&(input_dir.to_owned() + "/generate-secrets/input/")).expect("Could not list files");
+        let playbook = find_file_in_folder(&(input_dir.to_owned() + "/generate-secrets"), "*generate-sealed-secrets.yml").expect("Could not find playbook");
+        let selection_option = format!("({}) - {}", "R", playbook.file_name().expect("Could not extract file name from playbook path").to_string_lossy());
+        print_selection_option(&selection_option);
         loop {
             let mut user_input = String::new();
             io::stdin().read_line(&mut user_input).expect("Failed to read line");
@@ -22,7 +22,12 @@ pub async fn action_loop() {
             } else if user_input == "all" || user_input == "a" {
                 process_all_files(&file_map).await;
                 break;
-            } else {
+            } else if user_input == "r" {
+                print_info(&format!("Processing playbook: {} ", playbook.file_name().unwrap().to_string_lossy()));
+                docker::run_docker_command("run-playbook", playbook.file_name().expect("Could not extract file name from playbook path").to_str().unwrap()).await.expect("Failed to run command");
+                break;
+            }
+            else {
                 let number_strings: Vec<&str> = user_input.split(',').collect();
                 let mut invalid_choice = false;
                 let mut selected_files: Vec<u32> = Vec::new();
@@ -67,9 +72,12 @@ pub async fn action_loop() {
         }
     }
 }
-
+//TODO Refactor
 async fn process_all_files(file_map: &HashMap<u32, String>) {
     let choice = get_encrypt_decrypt_choice();
+    if choice == "generate" {
+        return;
+    }
     for file in file_map.values() {
         docker::run_docker_command(choice, file).await.expect("Failed to run command");
     }
@@ -78,6 +86,9 @@ async fn process_all_files(file_map: &HashMap<u32, String>) {
 async fn process_single_file(user_input: &u32, file_map: &HashMap<u32, String>) {
 
     let choice = get_encrypt_decrypt_choice();
+    if choice == "generate" {
+        return;
+    }
     let file = &file_map[user_input];
     docker::run_docker_command(choice, file).await.expect("Failed to run command");
 }

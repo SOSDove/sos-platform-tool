@@ -29,7 +29,6 @@ async fn main() {
 
             if ext == "encrypt" || ext == "decrypt" {
                 let (new_path, new_key) = get_path_and_key(sub_matches);
-
                 run_tool(&new_path, &new_key).await;
             }
         }
@@ -79,18 +78,10 @@ async fn run_tool(new_path: &String, new_key: &String) {
 
     let encrypt_decrypt_path = docker::run_docker_container(&cryptographic_command.type_of_command, &cryptographic_command.path.to_str().unwrap(), &cryptographic_command.key).await;
 
-    action_loop().await;
+    action_loop(&(path.to_str().unwrap().to_owned())).await;
 
     match encrypt_decrypt_path {
         Ok(_) => print_info("Ran successfully"),
         Err(e) => eprintln!("Error during running: {:?}", e),
     }
 }
-
-
-
-
-
-
-
-

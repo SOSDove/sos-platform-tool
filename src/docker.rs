@@ -1,6 +1,7 @@
-use std::process::Command;
+use std::io::Read;
+use std::process::{Command, Stdio};
 use crate::{print_info};
-use crate::messages::print_success;
+use crate::messages::{print_error, print_success};
 
 pub async fn pull_docker_image() -> Result<(), Box<dyn std::error::Error>> {
     print_info("Pulling Docker Image");
@@ -30,7 +31,7 @@ pub async fn run_docker_container(ext: &str, path: &str, key: &str) -> Result<()
         .arg(mount_path)
         .arg("-e")
         .arg("VAULT_PASSWORD=".to_owned() + key)
-        .arg("quay.sos.eu/edbafjdu/sos-platform-tool")
+        .arg("sos-platform-tool-v3")
         .output()?;
 
     if !output.status.success() {
@@ -73,7 +74,6 @@ pub async fn remove_container_if_present() -> Result<(), Box<dyn std::error::Err
 }
 
 pub async fn run_docker_command(action: &str, file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
-    // Ensure the action is either "encrypt" or "decrypt"
     let vault_action = VaultAction::from_str(action).expect("Invalid action");
 
     let output = match vault_action {
@@ -83,13 +83,12 @@ pub async fn run_docker_command(action: &str, file_path: &str) -> Result<(), Box
                 .arg("encrypt-decrypt-container") // Replace with your actual container name
                 .arg("ansible-vault")
                 .arg(action)
-                .arg("/files_to_encrypt/".to_owned() + file_path)
+                .arg("/files_to_encrypt/generate-secrets/input/".to_owned() + file_path)
                 .arg("--vault-password-file")
                 .arg("/vault_password.sh")
                 .arg("--encrypt-vault-id")
                 .arg("default")
                 .output()?
-
         }
         VaultAction::Decrypt => {
             Command::new("docker")
@@ -97,9 +96,25 @@ pub async fn run_docker_command(action: &str, file_path: &str) -> Result<(), Box
                 .arg("encrypt-decrypt-container") // Replace with your actual container name
                 .arg("ansible-vault")
                 .arg(action)
-                .arg("/files_to_encrypt/".to_owned() + file_path)
+                .arg("/files_to_encrypt/generate-secrets/input/".to_owned() + file_path)
                 .arg("--vault-password-file")
                 .arg("/vault_password.sh")
+                .output()?
+        }
+        VaultAction::PLAYBOOK => {
+            print_info("Running Playbook");
+            Command::new("docker")
+                .arg("exec")
+                .arg("encrypt-decrypt-container") // Replace with your actual container name
+                .arg("ansible-playbook")
+                .arg("-i")
+                .arg(",localhost")
+                .arg("-c")
+                .arg("local")
+                .arg("/files_to_encrypt/generate-secrets/".to_owned() + file_path)
+                .arg("--vault-password-file")
+                .arg("/vault_password.sh")
+                .env("ANSIBLE_DEPRECATION_WARNINGS", "False") // Suppress deprecation warnings
                 .output()?
         }
     };
@@ -108,14 +123,19 @@ pub async fn run_docker_command(action: &str, file_path: &str) -> Result<(), Box
         let success_message = format!("Successfull {} of {}", action, file_path);
         print_success(&success_message);
     } else {
+        let failure_message = format!("Failed {} of {}", action, file_path);
+        print_error(&failure_message);
         eprintln!("Error! Output:\n{}", String::from_utf8_lossy(&output.stderr));
+        eprintln!("Error! Output:\n{}", String::from_utf8_lossy(&output.stdout));
     }
 
     Ok(())
 }
 
 enum VaultAction {
-    Encrypt, Decrypt
+    Encrypt,
+    Decrypt,
+    PLAYBOOK,
 }
 
 impl VaultAction {
@@ -123,9 +143,8 @@ impl VaultAction {
         match action_str {
             "encrypt" => Some(VaultAction::Encrypt),
             "decrypt" => Some(VaultAction::Decrypt),
+            "run-playbook" => Some(VaultAction::PLAYBOOK),
             _ => None,
         }
     }
 }
-
-// ... [any other Docker-related functions]

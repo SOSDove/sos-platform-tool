@@ -31,7 +31,7 @@ pub fn cli() -> Command {
 
 pub fn get_encrypt_decrypt_choice() -> &'static str {
     loop {
-        print_prompt("(E)ncrypt or (D)ecrypt?");
+        print_prompt("(E)ncrypt or (D)ecrypt or (R)un-Playbook?");
         let mut encrypt_decrypt_choice = String::new();
         io::stdin().read_line(&mut encrypt_decrypt_choice).expect("Failed to read line");
         let encrypt_decrypt_choice = encrypt_decrypt_choice.trim().to_lowercase();
@@ -59,7 +59,7 @@ pub fn interactive_encryption_mode(path: Option<String>, key: Option<String>) ->
     let mut new_path = String::new();
     let mut new_key = String::new();
     if path.is_none() {
-        let current_dir = std::env::current_dir().expect("Could not find current dir").to_str().unwrap().to_string();
+        let current_dir = find_top_directory().unwrap_or("not-found".to_string());
         let prompt_message = format!("Detected empty path, default is {}, press enter to use default or enter a new path:", current_dir.clone());
         print_prompt(&prompt_message);
         io::stdin().read_line(&mut new_path).expect("Failed to read path");
@@ -82,4 +82,22 @@ pub fn interactive_encryption_mode(path: Option<String>, key: Option<String>) ->
     print_info("Entering Interactive Encrypt Mode");
 
     (new_path.to_string(), new_key.to_string())
+}
+
+fn find_top_directory() -> Option<String> {
+    let mut current_dir = std::env::current_dir().expect("Could not find current dir");
+    let target_dir = "generate-secrets";
+
+    while current_dir.parent().is_some() {
+        if current_dir.join(target_dir).exists() {
+            return current_dir.to_str()
+                .map(|s| s.to_string())
+                .or_else(|| {
+                    eprintln!("Failed to convert path to string.");
+                    None
+                });
+        }
+        current_dir.pop();
+    }
+    None
 }
