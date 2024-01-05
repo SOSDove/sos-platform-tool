@@ -1,13 +1,18 @@
-use std::io::Read;
-use std::process::{Command, Stdio};
+use std::process::{Command};
 use crate::{print_info};
 use crate::messages::{print_error, print_success};
+use crate::sos_platform_tool_config::use_optimized_image;
 
 pub async fn pull_docker_image() -> Result<(), Box<dyn std::error::Error>> {
+    let image_to_pull = if use_optimized_image() {
+        "quay.sos.eu/edbafjdu/sos-platform-tool:optimized"
+    } else {
+        "quay.sos.eu/edbafjdu/sos-platform-tool:v2.1.0"
+    };
     print_info("Pulling Docker Image");
     let output = Command::new("docker")
         .arg("pull")
-        .arg("quay.sos.eu/edbafjdu/sos-platform-tool")
+        .arg(image_to_pull)
         .output()?;
 
     if !output.status.success() {
@@ -19,7 +24,11 @@ pub async fn pull_docker_image() -> Result<(), Box<dyn std::error::Error>> {
 
 pub async fn run_docker_container(ext: &str, path: &str, key: &str) -> Result<(), Box<dyn std::error::Error>> {
     print_info("Running Docker");
-
+    let image_to_run = if use_optimized_image() {
+        "quay.sos.eu/edbafjdu/sos-platform-tool:optimized"
+    } else {
+        "quay.sos.eu/edbafjdu/sos-platform-tool:v2.1.0"
+    };
     let mount_path = format!("{}:/files_to_encrypt/", path);
 
     let output = Command::new("docker")
@@ -31,7 +40,7 @@ pub async fn run_docker_container(ext: &str, path: &str, key: &str) -> Result<()
         .arg(mount_path)
         .arg("-e")
         .arg("VAULT_PASSWORD=".to_owned() + key)
-        .arg("sos-platform-tool-v3")
+        .arg(image_to_run)
         .output()?;
 
     if !output.status.success() {

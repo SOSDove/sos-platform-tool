@@ -14,6 +14,7 @@ mod utils;
 mod messages;
 mod processor;
 mod file_ops;
+mod sos_platform_tool_config;
 
 #[tokio::main]
 async fn main() {
