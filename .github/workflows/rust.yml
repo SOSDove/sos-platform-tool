@@ -1,0 +1,38 @@
+name: Build and Release macOS
+
+on:
+  push:
+    branches:
+      - main  # Change this to your default branch if it's not 'main'
+
+jobs:
+  build:
+    runs-on: macos-latest  # This ensures the job runs on a macOS environment
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v2
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+
+    - name: Build Release
+      run: cargo build --release
+
+    - name: Create Release Folder
+      run: mkdir -p release_folder
+
+    - name: Move Binary and Rename Binary
+      run: mv target/release/sos-platform-tool ./release_folder/sos-platform-tool_name-macos
+
+    - name: Commit and Push
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add -A
+        git commit -m "Add macOS build artifacts" || echo "No changes to commit"
+        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/SOSDove/sos-platform-tool.git
+        git push
