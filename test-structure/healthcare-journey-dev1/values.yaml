@@ -1,0 +1,858 @@
+global:
+  namespace: "healthcare-journey-dev1"
+  argoproject: healthcare-journey-dev1
+  charts:
+    app:
+      targetRevision: 1.40.3
+    pipeline:
+      targetRevision: 1.2.0-rc11
+  pipelines:
+    imageRegistryNamespace: healthcare
+    targets:
+      - namespace: healthcare-journey-dev1
+        branch: master
+        gitConfig: 'git@git.sos.eu:hj/healthcare-journey-config-dev1.git'
+      - namespace: healthcare-journey-dev1
+        branch: develop
+        gitConfig: 'git@git.sos.eu:hj/healthcare-journey-config-dev1.git'
+    image:
+      graal: 'quay.sos.eu/sos/quarkus:mandrel-21-jdk17'
+      openjdk: 'registry.access.redhat.com/ubi8/openjdk-17:1.13-1.1655306439'
+    teamsOnFailureNotifyUrl: https://soseu.webhook.office.com/webhookb2/68edc6ad-9b0f-4fe0-b3df-63e011f5d593@5f3aee10-f259-4c5f-a52c-1dc66f5ae0ca/IncomingWebhook/f320c41879584b92b6243c60489cd341/8a8651fe-2e4e-44fa-8341-27a560056e08
+    gitUpdateCommitStatus: true
+    mavenBundledSteps: true
+    pipelineServiceAccount:
+      secrets:
+        - name: healthcare-healthcare-quay-secret
+        - name: git-http
+        - name: git-ssh-hj
+deployments:
+  application-deployment:
+    values:
+      framework: ubi
+      image:
+        repository: quay.sos.eu/edbafjdu/application_deployment
+        tag: '0.74'
+      routes:
+        - host: application-deployment-dev1.apps.ocp.tst.sos.eu
+      extraEnv:
+        - name: OCP_NAMESPACES
+          value: https://git.sos.eu/scm/hj/healthcare-journey-config-dev1.git
+      extraEnvFrom:
+        - secretRef:
+            name: application-deployment-app-properties
+      ubi:
+        livenessProbe:
+          exec:
+            command:
+              - sh
+              - -c
+              - echo 'ok'
+        readinessProbe:
+          exec:
+            command:
+              - sh
+              - -c
+              - echo 'ok'
+        resources:
+          requests:
+            memory: 32Mi
+          limits:
+            memory: 64Mi
+  release-dashboard:
+    values:
+      framework: ubi
+      image:
+        repository: quay.sos.eu/amt/release-dashboard
+        tag: 1.0-20230302.100723.473
+      routes:
+        - host: release-dashboard-dev1.apps.ocp.tst.sos.eu
+      extraEnv:
+        - name: APP_CONFIG
+          value: config.py
+        - name: RELEASE_GIT_LIST
+          value: "https://git.sos.eu/projects/HJ/repos/healthcare-journey-config-dev1/raw/healthcare-journey-dev1/values.yaml?at=refs%2Fheads%2Fmaster,https://git.sos.eu/projects/HJ/repos/healthcare-journey-config-tst/raw/healthcare-journey-tst/values.yaml?at=refs%2Fheads%2Fmaster, https://git.sos.eu/projects/HJ/repos/healthcare-journey-config-uat/raw/healthcare-journey-uat/values.yaml?at=refs%2Fheads%2Fmaster, https://git.sos.eu/projects/HJ/repos/healthcare-journey-config-prd/raw/healthcare-journey-prd/values.yaml?at=refs%2Fheads%2Fmaster"
+        - name: PROMOTION_URL
+          value: "https://el-promotion-healthcare-journey-dev1.apps.ocp.tst.sos.eu"
+        - name: PROMOTION_TOKEN
+          value: "a0b37b4bf476153e"
+      extraEnvFrom:
+        - secretRef:
+            name: git-http
+  communications-platform:
+    values:
+      framework: quarkus
+      replicaCount: 1
+      image:
+        repository: quay.sos.eu/healthcare/communications-platform
+        tag: 1.0-20230804.103125.929
+        pullSecret: healthcare-healthcare-quay-secret
+      routes:
+        - host: communications-platform-dev1.apps.ocp.tst.sos.eu
+          name: communications-platform
+      app:
+        profile: communications-platform-dev1
+        config:
+          properties: SERVER_PORT=8080
+      extraEnv:
+        - name: QUARKUS_PROFILE
+          value: "dev"
+        - name: quarkus.oidc.auth-server-url
+          value: "https:/idp.tst.sos.eu"
+        - name: quarkus.datasource.db-kind
+          value: "h2"
+        - name: quarkus.datasource.jdbc.url
+          value: "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1"
+        - name: quarkus.datasource.jdbc.driver
+          value: "org.h2.Driver"
+        - name: quarkus.datasource.username
+          value: "test"
+        - name: quarkus.datasource.password
+          value: "test"
+        - name: quarkus.tls.trust-all
+          value: "true"
+  crm-providers-sync:
+    values:
+      framework: quarkus
+      replicaCount: 1
+      image:
+        repository: quay.sos.eu/healthcare/crm-providers-sync
+        tag: 1.0-20230818.120418.498
+        pullSecret: healthcare-healthcare-quay-secret
+      routes:
+        - host: crm-providers-sync-dev1.apps.ocp.tst.sos.eu
+          name: crm-providers-sync
+      app:
+        profile: crm-providers-sync-dev1
+        config:
+          properties: SERVER_PORT=8080
+      extraEnv:
+        - name: QUARKUS_PROFILE
+          value: "dev"
+        - name: quarkus.oidc.auth-server-url
+          value: "https:/idp.tst.sos.eu"
+        - name: quarkus.datasource.db-kind
+          value: "h2"
+        - name: quarkus.datasource.jdbc.url
+          value: "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1"
+        - name: quarkus.datasource.jdbc.driver
+          value: "org.h2.Driver"
+        - name: quarkus.datasource.username
+          value: "test"
+        - name: quarkus.datasource.password
+          value: "test"
+        - name: quarkus.tls.trust-all
+          value: "true"
+        - name: ADMIN_ENDPOINT
+          value: https://crm-providers-sync-dev1.apps.ocp.tst.sos.eu/
+  tokenization-service:
+    values:
+      framework: quarkus
+      replicaCount: 1
+      image:
+        repository: quay.sos.eu/healthcare/tokenization-service
+        tag: 1.0-20230420.082422.605
+        pullSecret: healthcare-healthcare-quay-secret
+      routes:
+        - host: tokenization-service-dev1.apps.ocp.tst.sos.eu
+          name: tokenization-service
+      app:
+        profile: tokenization-service-dev1
+        config:
+          properties: |-
+            SERVER_PORT=8080
+            TEST=test
+      extraEnv:
+        - name: QUARKUS_PROFILE
+          value: "dev"
+        - name: quarkus.oidc.auth-server-url
+          value: "https:/idp.tst.sos.eu"
+        - name: quarkus.datasource.db-kind
+          value: "h2"
+        - name: quarkus.datasource.jdbc.url
+          value: "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1"
+        - name: quarkus.datasource.jdbc.driver
+          value: "org.h2.Driver"
+        - name: quarkus.datasource.username
+          value: "test"
+        - name: quarkus.datasource.password
+          value: "test"
+        - name: quarkus.tls.trust-all
+          value: "true"
+      extraEnvFrom:
+        - secretRef:
+            name: tokenization-service-app-properties
+  video-meetings-consumer:
+    values:
+      framework: quarkus
+      replicaCount: 1
+      image:
+        repository: quay.sos.eu/healthcare/video-meetings-consumer
+        tag: 1.0-20231005.123050.038
+        pullSecret: healthcare-healthcare-quay-secret
+      routes:
+        - host: video-meetings-consumer-dev1.apps.ocp.tst.sos.eu
+          name: video-meetings-consumer
+      quarkus:
+        servicemonitor:
+          interval: 15s
+      app:
+        profile: video-meetings-consumer-dev1
+        config:
+          properties: |-
+            SERVER_PORT=8080
+            MYHEALTH_URL=https://myhealth-client-web-dev1.apps.ocp.tst.sos.eu/choose-login
+            DATABASE_URL=jdbc:sqlserver://MSSQL-RHOS-DEV1-VMC.sos.eu;encrypt=true;trustServerCertificate=true;multiSubnetFailover=true;authenticationScheme=JavaKerberos;integratedSecurity=true;database=RHOS_DEV1_VMC
+            TEAMS_MEETING_CONTROLLER_URL=http://teams-meetings-controller-http:8080
+            ONE_TIME_LINKS_CONTROLLER_URL=https://one-time-links-controller-dev1.apps.ocp.tst.sos.eu/
+            COMMUNICATIONS_SERVICE_URL=http://communication-service-http:8080
+      extraEnv:
+        - name: QUARKUS_PROFILE
+          value: "dev"
+        - name: KRB5_CONF
+          value: "/etc/config/krb5.conf"
+      extraEnvFrom:
+        - secretRef:
+            name: video-meetings-consumer-app-properties
+      kerberos:
+        enabled: true
+        debug: false
+        mssql:
+          principal: 'RHOS_DEV1_VMC@SOS.EU'
+          ktab: AgA4Z8+E36Sc7B9DmDqchZI0nr8+Nxbh6YJIA7JmEtIxXNuHKjzmIe9wXz5jlblh2DLL2tead5ikdelWZdUP5ZJTHOjGcu74UsGxaXgf/3SNao4qwPfm9PxWEICBWq/gfCA7MsuYUXA7FTugF4rb0UE+teK3ENHQWt4KiZ5UTm8Vw6f3TAmiA1V6SUBMMSBAvUgeHWyWapDvJu9XBbPb+rhO2sPwMxGDzfsfO09HcAfTvNzlHWEJWjw5qtF4q65sy2brCn+CALqvz+lE7JAa+TrOQyxRseRmfCgmf1Q1Dv3T1Acnkk0Gkj4xX4Mv7XQwSuyO2zYTvtTytPLTipf0/AmuvOMTdzf3SgC136n12XtXsk704fhREa/5GouFda9+HevGD588PqbcQDwFbE4PmTzj1mJfYeW4uTbBiH1ucL2zmZ+WPwJ+qVXCIDAX4rZzPbuuuJ2KjNMlGIau0EG3YpPukIte1SmNjSHSlknKyT8CyLWohA25Mb7NzKAdksJbU/F9//HsK5w4PpCwOxeGBL4y59p8U2UXLMJXoWiL9L06R9SBd8KGDYJ78aTcNH/YD+TLCTH9iB4cNLsWmSsnWa1QPwyCVHO5KoVJHaG/BhFX+opgnlULWDhcqHg+l3FQNW8UN6/wN81fME9ypbxZS/05vp6rQSrCzoHV/8kgWHVHGOhxVnYzHFoPK5Mf8fSc9YV+o3pNaTKp07NRvTOx9auiMnjWRSMKoXC62Xhz8rEXUd8MozBtSORB76WnH950yAjWXNTx6OXUc9cO7X6im5qEYKU+vBuz84B8NzPn
+  teams-meetings-controller:
+    values:
+      framework: quarkus
+      replicaCount: 1
+      image:
+        repository: quay.sos.eu/healthcare/teams-meetings-controller
+        tag: 1.0-20231005.191522.221
+        pullSecret: healthcare-healthcare-quay-secret
+      routes:
+        - host: teams-meetings-controller-dev1.apps.ocp.tst.sos.eu
+          name: teams-meetings-controller
+      app:
+        profile: teams-meetings-controller-dev1
+        config:
+          properties: SERVER_PORT=8080
+      extraEnv:
+        - name: QUARKUS_PROFILE
+          value: "dev"
+        - name: quarkus.oidc.auth-server-url
+          value: "https://idp.tst.sos.eu"
+        - name: quarkus.datasource.db-kind
+          value: "h2"
+        - name: quarkus.datasource.jdbc.url
+          value: "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1"
+        - name: quarkus.datasource.jdbc.driver
+          value: "org.h2.Driver"
+        - name: quarkus.datasource.username
+          value: "test"
+        - name: quarkus.datasource.password
+          value: "test"
+        - name: quarkus.tls.trust-all
+          value: "true"
+      extraEnvFrom:
+        - secretRef:
+            name: teams-meetings-controller-app-properties
+  case-portal-frontend:
+    values:
+      framework: react
+      feature: develop
+      replicaCount: 1
+      image:
+        repository: quay.sos.eu/healthcare/case-portal-frontend
+        tag: 1.0-20231031.130859.362-develop
+        pullSecret: healthcare-healthcare-quay-secret
+      routes:
+        - host: case-portal-healthcare-journey-dev1.apps.ocp.tst.sos.eu
+      react:
+        config:
+          contents: |-
+            {
+                "key": "value"
+            }
+          envJs: |-
+            window.RUNTIME = {
+              ENVIRONMENT: 'TST',
+              KEYCLOAK: {
+                URL: 'https:/idp.tst.sos.eu/auth',
+                REALM: 'shared',
+                CLIENT: 'healthcare-case-portal-ui',
+                ACCESS_ROLES: {
+                  IMPERSONATOR: 1072919008946865
+                }
+              }
+            };
+  one-time-links-controller:
+    values:
+      framework: quarkus
+      replicaCount: 1
+      image:
+        repository: quay.sos.eu/healthcare/one-time-links-controller
+        tag: 20231005.090951.613
+        pullSecret: healthcare-healthcare-quay-secret
+      routes:
+        - host: one-time-links-controller-dev1.apps.ocp.tst.sos.eu
+          name: one-time-links-controller
+      app:
+        profile: one-time-links-controller-dev1
+        config:
+          properties: |-
+            SERVER_PORT=8080
+            DATABASE_URL=jdbc:sqlserver://MSSQL-RHOS-DEV1-OTL.sos.eu;multiSubnetFailover=true;authenticationScheme=JavaKerberos;integratedSecurity=true;trustServerCertificate=true;encrypt=true;database=RHOS_DEV1_OTL
+      extraEnv:
+        - name: QUARKUS_PROFILE
+          value: "dev"
+        - name: quarkus.datasource.jdbc.url
+          value: "jdbc:sqlserver://MSSQL-RHOS-DEV1-OTL.sos.eu;multiSubnetFailover=true;authenticationScheme=JavaKerberos;integratedSecurity=true;trustServerCertificate=true;encrypt=true;database=RHOS_DEV1_OTL"
+        - name: one-time-link-url
+          value: "https://one-time-links-controller-dev1.apps.ocp.tst.sos.eu"
+      kerberos:
+        enabled: true
+        debug: false
+        allow_weak_crypto: true
+        mssql:
+          principal: 'RHOS_DEV1_OTL_DBO@SOS.EU'
+          ktab: AgCl+Wo61T29MB87PHyU+TY9Lxc//vB06ALoxBq56pmbKoUCC4wlOdJokGzER2AH2HFTsGFmPnj+Mr/i3EdwYmjRCn5CpWcIJKEk4/OOQmkr08pTassWEyZJriZ4QtTNKVW/ZaR43eiLg6svLj8ydZxPteDYCa9WWeBU80mdB3XWJq8kAwr0GRf1iQHxeNRk35De8YOhfIvKUFwqR4VJb8fAj8fVCuzS3Y0kQdESi58M2lFIC6WLsyfH8Ry0YKVAqM68NgrJL0jMpxVbMrlb/IEzu29kllPiuUDI/sN4c44omtu8/Nlj5wsZPtvA4lW3hxHNmkXqymqTL+ljoMikDruOLWmqkmXn+TMBsiK1XMhvzf8LJvGsmVmGjXY6wvn8z0glxu+CXbGCOv1nLKqz7bw0nIIVPu5OY+Q20zO9kAKp3A7FxF6FSnqslMPD3Is/LW3M4g7wi8+DulWYE9XPI5Guiud+IgR7f6lrGuqBZ66MRKqiOhmyKSHUVdoEbFQ0q1P/3iNkJfcDyPGuDsrY3nPHJxqBBnLTBz+XOhdY+PHeJj52PY+O0Sz2Rt0HtIG5hq0BVmAqrEGh6oY+43tySL/4EWeE8F1FpcW9avnYW757abHHl9zQac4Vy8rtFNa2HKlWCcw/EBqOYjH4wjsp+kRsoA2TVOxqkWNZgbACykPinqmsFcL/Kh0cHiu4DcM6+xYhxwwQoP8vUnLdiJ1NLQ2zkX5palWEUubAOYCjntPRt0+uiY30Nd8wiKELLiqPaUrG6g2Vf0Fww1QK16smD0j9uaiWIMcSGUdaw6+L4fjpww==
+  communication-service:
+    values:
+      framework: quarkus
+      replicaCount: 1
+      image:
+        repository: quay.sos.eu/healthcare/communication-service
+        tag: 20231006.105156.912
+        pullSecret: healthcare-healthcare-quay-secret
+      routes:
+        - host: communication-service-dev1.apps.ocp.tst.sos.eu
+          name: communication-service
+      app:
+        profile: communication-service-dev1
+        config:
+          properties: |-
+            SERVER_PORT=8080
+            SMS_URL=https://test-smsserver.sos.eu/message/send.req
+            SMS_SENDER=SOSInt
+            SMS_SENDER_TEXT=SOSInt
+            SMS_SENDER_APPLICATION=HEALTHCARESMS
+            SOS_EMAIL_SENDER=noreply@sos.eu
+            DATABASE_KIND=mssql
+            DATABASE_URL=jdbc:sqlserver://MSSQL-RHOS-DEV1-COM.sos.eu;multiSubnetFailover=true;authenticationScheme=JavaKerberos;integratedSecurity=true;trustServerCertificate=true;encrypt=true;database=RHOS_DEV1_COM
+            KEYCLOAK_URL_SHARED_REALM=https://idp.tst.sos.eu/auth/realms/shared
+            KEYCLOAK_SHARED_CLIENT_ID=cb-ui
+      extraEnv:
+        - name: KRB5_CONF
+          value: "/etc/config/krb5.conf"
+        - name: quarkus.oidc.auth-server-url
+          value: "https://idp.tst.sos.eu/auth/realms/shared"
+        - name: quarkus.datasource.jdbc.url
+          value: "jdbc:sqlserver://MSSQL-RHOS-DEV1-COM.sos.eu;multiSubnetFailover=true;authenticationScheme=JavaKerberos;integratedSecurity=true;trustServerCertificate=true;encrypt=true;database=RHOS_DEV1_COM"
+      extraEnvFrom:
+        - secretRef:
+            name: communication-service-app-properties
+      kerberos:
+        enabled: true
+        debug: false
+        mssql:
+          principal: 'RHOS_DEV1_COM_DBO@SOS.EU'
+          ktab: AgAjCA7HKIThFH2RGnaxgt27xafIhlvtzzQVSbeaJQa5dGIOHZhezIEtod7cPPqgNcQBgYDVIMflAe4vvMXXeDffoSkoeBjze9Lw8+7FHd+JnkdDBnhJNHsTjWAaerwW9yl6GUEijlZN4CdXbMwunOKlWKWOq5PWIkmy7mUzdsA6k56LPOb0lY1NJoguvFuHbWtmJ3M5OLuF29AO4PeI3vTb4dF1puWl+S1pLNyS1zpN5FLimtmZkuFhZyIYX1dFVMoLhQTYOUiaUyzdCMh6wR3zC3FcR/MRhvlGIQRXUEwzlCRdYG/6vVmEZJUeORk88HiLeOzR2/6myhGpv1jRt3PquXkjybkTj3UbYhrFDIj8k68uTxPpp9Y4CIbeb+VEr5E2lcAZyhVO4ZFPWJHvaA+Vxs0IsjH+kDZ9rOYLHygS2iD5a9xDOhn+WDkE2tKaPhpx5tbHsQYp6T+/+8d7hLZwDariMQ0/u58veuSYFz8ZtfQCjb7mHK8X+uJXUDn7/Sgr7pj+stLEbX5U//NbvpTBZhIkQBf8F+1naDjymYFtLvpLCdZ6MdqCMvMg8FS0K7fEi3vVUpyn+l1LkGPfJNBYEkcemEC7f6aymoKPLkKn3k3aWt/9HXDoMIGZ6a+Wg/biTEqHYhJLySSeg2sMfeJmsr2a0Skptlt5B0iv5h3a8hbhH4Jbs5XJ9k0fEkY60Esi2AtXv28bTRuA1uz1EkhLUszqICKHr3zjDtUf9jijd/H+B4aJJN71NjGYnd7NuAcMjhfJcr7fZEAxwgMEYiF8EOJx3DYA2ViK0bAq7HYS4A==
+  nginx-proxy:
+    values:
+      framework: nginx
+      image:
+        repository: registry.redhat.io/ubi8/nginx-118
+        tag: 1-18
+      routes:
+        - host: healthcare-journey-dev1.apps.ocp.tst.sos.eu
+      nginx:
+        livenessProbe:
+          httpGet:
+            path: /health
+        readinessProbe:
+          httpGet:
+            path: /health
+        config: |-
+          error_log stderr;
+          pid /run/nginx.pid;
+
+          include /usr/share/nginx/modules/*.conf;
+
+          events {
+              worker_connections  1024;
+          }
+
+          http {
+              log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                                '$status $body_bytes_sent "$http_referer" '
+                                '"$http_user_agent" "$http_x_forwarded_for"';
+              access_log /dev/stdout main;
+
+              sendfile        on;
+              tcp_nopush      on;
+              tcp_nodelay     on;
+              keepalive_timeout  65;
+              types_hash_max_size 2048;
+
+              #include /etc/nginx/mime.types;
+              default_type  application/octet-stream;
+
+              server {
+                  listen       8080 default_server;
+                  listen       [::]:8080 default_server;
+                  server_name  _;
+                  root         /opt/app-root/src;
+
+                  proxy_set_header  Host $host;
+                  proxy_set_header  X-Real-IP $remote_addr;
+                  proxy_set_header  X-Forwarded-Proto https;
+                  proxy_set_header  X-Forwarded-For $remote_addr;
+                  proxy_set_header  X-Forwarded-Host $remote_addr;
+                  proxy_buffering off;
+
+                  location / {
+                  }
+
+                  location /otl/ {
+                    proxy_pass http://one-time-links-controller-http:8080/otl/use/;
+                  }
+
+                  location /health {
+                    access_log off;
+                    types { } default_type "application/json; charset=utf-8";
+                    return 200 "{\"status\":\"OK\"}";
+                  }
+
+                    error_page 404 /404.html;
+                    location = /40x.html {
+                    }
+                    error_page 500 502 503 504  /50x.html;
+                    location = /50x.html {
+                    }
+                }
+              }
+  case-portal-service:
+    values:
+      framework: quarkus
+      replicaCount: 1
+      image:
+        repository: quay.sos.eu/healthcare/case-portal-service
+        tag: 1.0-20231101.095849.770
+        pullSecret: healthcare-healthcare-quay-secret
+      routes:
+        - host: case-portal-service-dev1.apps.ocp.tst.sos.eu
+          name: case-portal-service
+      app:
+        profile: case-portal-service-dev1
+        config:
+          properties: |-
+            SERVER_PORT=8080
+            COMMUNICATIONS_API_URL=http://communication-service-http:8080
+            KEYCLOAK_CLINIC_BUDDY_UI_CLIENT_ID=cb-ui
+            KEYCLOAK_AUTO_INVOICE_CLIENT_ID=cb-admin-module-api-client
+            CLINIC_BUDDY_CASE_PORTAL_API_URL=https://clinicbuddy-dev.sos.eu/api/v3/
+            KEYCLOAK_AUTH_SERVER_URL=https://idp.tst.sos.eu/auth/realms/shared
+            AUTO_INVOICE_KEYCLOAK_AUTH_SERVER_URL=https://keycloak-shared-rh-sso.apps.ocp.tst.sos.eu/auth/realms/shared
+            SELF_LINK=http://case-portal-service-http:8080
+            DATABASE_URL=jdbc:sqlserver://MSSQL-RHOS-DEV1-CPS.sos.eu:1433;database=RHOS_DEV1_CPS;integratedSecurity=true;authenticationScheme=NTLM;multiSubnetFailover=true;encrypt=false
+            AUTO_INVOICE_API_URL=https://healthcare-internal-gateway-dev1.apps.ocp.tst.sos.eu
+      extraEnv:
+        - name: QUARKUS_PROFILE
+          value: "dev"
+        - name: JAVA_OPTS_APPEND
+          value: "--enable-preview"
+        - name: quarkus.oidc-client.auth-server-url
+          value: "https:/idp.tst.sos.eu/auth/realms/shared"
+        - name: quarkus.oidc.auth-server-url
+          value: "https:/idp.tst.sos.eu/auth/realms/shared"
+        - name: quarkus.http.auth.permission.authenticated.paths
+          value: "/api/v1/*"
+        - name: quarkus.oidc.tls.verification
+          value: "none"
+        - name: quarkus.tls.trust-all
+          value: "true"
+      extraEnvFrom:
+        - secretRef:
+            name: case-portal-service-app-properties
+            #      kerberos:
+      kerberos:
+        mssql:
+          ktab: AgBicJrmtnwX2JzcJp5QZeji62LqDLZ6RuQIH6cN4eAOTWBCH8QmUGpZnCSmu/c9pzVMTgDQ6R0fOyowX0JpvNlcE9XPHSwC9raTnPQE/5mlU9skSdgkDLJPpjAButLcDvXup+64eyHd3VfX5XTsfe3OlyurZlO6Y/fLXx0hcyePY8DmXcbOR624iRI7XMbbxb+0jWEBxt5gOkRsvXP6HDmdT+AjXujCnBw9XsxpxBy9DvYJxwBMhIytm+wpnDTO95ge5HHZhBWyVK/DaUyrBq9VQnRXoBcg3Cguxoyi2I1F0C4dEgGplQX0FhjKC1MPEdBqOWUiQTs1XpFFhBQnyslAXAag9CdToSeEN5G0Ti2+Yxtbv5JxzZ0Xwf89lmZ+v+YeI8bEpqPQl0agSrYsmImT+2cCQWzaOEE4HU+3dbwqKD0AvvCSfJrjmdDFhZX6jItQutkQP+8YmrWcI+y2woNdC+f6Fix8mTGS60nd23bTie6Y0NjGOu2QiwWWgauA2nKBCCJTZAw+XRfDtIADSL6UE9h2oCo3ilzbTR0hSp6SHlVC983nUcLp1yBkIpXXaMY/cdy1nwM3zYQ9Zc/Wabf6q9p4byszKNqAW20+kFkrG+H6xxtxXr0MHk13lXtjTP5tQvnk2sU7vorpPslY8vKIDcGUIvP4lCJaXNi8p5c0SOuN+qVojQ2UJiim1F3fX8F4QxnxUbCI9Zh1oqPuoIx2UUjRtCY3S4D1E98Rsm9GSExIo8Z2h7dJtmn2d+P865S71YztyYZImPI9eSaVG8aLEs71IswyhJIP1hpcZv6rhQ==
+  #        enabled: true
+
+  #        debug: false
+
+  #        mssql:
+
+  #          principal: 'RHOS_DEV1_CPS_DBO@SOS.EU'
+
+  #          ktab: AgAKLV9zZAZZ56LTdTa+7ykFFQqLLfOm24fFk9JACwCzD2+ZzYUR+jZkHjFtix0ooHyxMxTWGsuX3ykDryzKiNOyhmhPWQZWg2/zFKlCSv2WPyMVqv4tM+GYKjOozgJzRRd6FUaiXQ7BwdwQvkvuRyk15j8mOMMsLMC2I0+gMu22UkTPlN48x2JQ+I3mvDoudmpfkVyA9quDCw1zLjBu7ka3g3mWa2ZFh6fetzxI850IxvzD5rBMZZte5tRum/GcEjr2t74/SVxjl9lRoKExzGgj1/dIxxmNM226pBRe/WUxTU2sPCxoXcgba8pVLfJFIT5OQaSJoUIw/PE3981M9BKiPNPKqdMVwC+rmaHP/GEUxGCRz2SZIX3IySXzqNxviJ/QRRaFoeEL0HojOpXnpw3/jy7M7+elvkq4oUdTZyKmac71ANqpUyrWOJ5Rxg0uEGiOEaPB2EJShJ+sS677u4jNg07WEHx2UeX0nNtQr7s3KG0f7e9TH9+R55j0Imeq1mlZhEq4lCCAXD8gXl+3ydDUihcA5rsjNlA8Jr+GtsirgUMxHD+ekvannBYgHyk3aEh9fHkJt5rsk+zP7IDnxoInc8jgI04P+RT9ihOOypMBZdDQ3ADxlKQ+DfBcKJVCHia1oNCX/fhHW/yMQ/seplv5Ku0wfg9xeKp8uknPYSBKmloA//Mewv8LWCngipuCuVW+lEvpt53pCjbd4hwGIy0p0LhLVwLzvqUUXsHM7cd6uuigkJP1TJtQjjsWm9ga+sfgNxin6X98HjV5d64V9HLr9oJY0VVQIVbv3FNXOw8O/A==
+  sos-microservice-generator:
+    values:
+      framework: quarkus
+      replicaCount: 1
+      image:
+        repository: quay.sos.eu/healthcare/sos-microservice-generator
+        tag: 1.0-20230324.092745.953
+        pullSecret: healthcare-healthcare-quay-secret
+      routes:
+        - host: sos-microservice-generator-dev1.apps.ocp.tst.sos.eu
+          name: sos-microservice-generator
+      app:
+        profile: sos-microservice-generator-dev1
+        config:
+          properties: SERVER_PORT=8080
+      extraEnv:
+        - name: QUARKUS_PROFILE
+          value: "dev"
+        - name: quarkus.oidc.auth-server-url
+          value: "https:/idp.tst.sos.eu"
+        - name: quarkus.datasource.db-kind
+          value: "h2"
+        - name: quarkus.datasource.jdbc.url
+          value: "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1"
+        - name: quarkus.datasource.jdbc.driver
+          value: "org.h2.Driver"
+        - name: quarkus.datasource.username
+          value: "test"
+        - name: quarkus.datasource.password
+          value: "test"
+        - name: quarkus.tls.trust-all
+          value: "true"
+      extraEnvFrom:
+        - secretRef:
+            name: sos-microservice-generator-app-properties
+  myhealth-service:
+    values:
+      feature: develop
+      replicaCount: 1
+      framework: quarkus
+      image:
+        repository: quay.sos.eu/healthcare/myhealth-service
+        tag: 1.0-20231005.191338.644
+        pullSecret: healthcare-healthcare-quay-secret
+      routes:
+        - host: myhealth-service-dev1.apps.ocp.tst.sos.eu
+          name: myhealth-service
+      app:
+        profile: myhealth-service-dev1
+        config:
+          properties: |-
+            SERVER_PORT=8080
+            DB_HOST=MSSQL-RHOS-DEV1-MYH.sos.eu
+            DB_DATABASE=RHOS_DEV1_MYH
+            KEYCLOAK_URL_ENDUSER_REALM=https://idp.tst.sos.eu/auth/realms/enduser
+            KEYCLOAK_URL_SHARED_REALM=https://idp.tst.sos.eu/auth/realms/shared
+            KEYCLOAK_ENDUSER_CLIENT_ID=myhealth-ui
+            KEYCLOAK_SHARED_CLIENT_ID=myhealth-therapist-ui
+            KEYCLOAK_SHARED_ROLES=SG-EU-HGB-SSO-TRYG-NO
+            RBAC_OAUTH_ROLE_CLAIM_PREFIX=SG-EU-HGB-SSO
+            VIDEO_MEETINGS_CONSUMER_API=http://video-meetings-consumer-http:8080
+            MYHEALTH_WEB_URL=https://myhealth-client-web-dev1.apps.ocp.tst.sos.eu
+            COMMUNICATIONS_PLATFORM_API=http://communications-platform-http:8080
+      extraEnv:
+        - name: KRB5_CONF
+          value: "/etc/config/krb5.conf"
+        - name: quarkus.oidc.auth-server-url
+          value: "https://idp.tst.sos.eu/auth/realms/enduser"
+        - name: quarkus.oidc-client.auth-server-url
+          value: "https://idp.tst.sos.eu/auth/realms/enduser"
+      extraEnvFrom:
+        - secretRef:
+            name: myhealth-service-app-properties
+      kerberos:
+        enabled: true
+        debug: false
+        mssql:
+          principal: 'RHOS_DEV1_MYH_DBO@SOS.EU'
+          ktab: AgCG1cXSmscHSgrsSECwH1m5Lvj1htF7wGtLPkwv2mzYoxnVlKO1Nam0szGCJAbNtb1JUnNsd7O0Y05fdMTdCdBrV2s95UnAvmzJwUTnMvZK9gaOPmPez++v7NLgEMkOnXd+xIRgJZ6ttfjm/QkjXGMyiyp/TireywaMh0+yOjY3Ut4zvf27O0ZHd5biyp5Fp54/dG1haZK2h/b8i8nnu3uha0x629v+5kRves+MKWRBv69U3Ul0s7XXfUZv351oSrspmxy6MAo6Kn5I4AyemyakBzguKRWB2zBx0mRm03Hc2jscP6sW/0uBpp7awATPoA7xR4fnFzFlBnB4R50fizZ0pbs8xwbe9qHm9gwvFffB5vRYqlzuQHNevvF7UPnUpnPMXgR5U7k9AVsBuURs5mIQikhYjaZm/hY1fmyoI1SqOo3GBMbCxkNCKjXjWDtzPl4xKlbPNzYklnnkp8DwJzGCXWD0vUKmTsJgXmwrMPUKBVvjPDvzme37r6vBuhvPQBUdLU1wexx3nef+zSPzttYRoYg/l7irbE0DsFv7Sm2eUtjBfrB5VH3VvHLC/x27QnV0F2hm/8Gaz/LIB3wtCf5mLI+hobJdjiG74Hd3hT1op1ADggEyjI2a3Bxuv+0KlWC1DwVilDy3H7pB3Jra8or6i8HStAXyAboOBneT8dIiQkRfTCDVU9sVGBZXFF6tIMRMyXhln/J8+tjjGWKhsDIR62mSae06CwEL2iFafocy9lf5PYYjkB+fe23WuJdjaFati8/RclXWY4532muDDaz3lYuQCkv+psDAi+83J2EM9Q==
+  myhealth-client-web:
+    values:
+      replicaCount: 1
+      framework: angular
+      image:
+        repository: quay.sos.eu/healthcare/myhealth-client-web
+        tag: 1.0-20231010.113309.822
+        pullSecret: healthcare-healthcare-quay-secret
+      routes:
+        - host: myhealth-client-web-dev1.apps.ocp.tst.sos.eu
+      angular:
+        config:
+          contents: |-
+            {
+              "key": "value"
+            }
+          envJs: |-
+            (function (window) {
+              window.__env = window.__env || {};
+              window.__env.KEYCLOAK_URL="https://idp.tst.sos.eu/auth";
+              window.__env.KEYCLOAK_REALM="enduser";
+              window.__env.KEYCLOAK_SHARED_REALM="shared";
+              window.__env.KEYCLOAK_CLIENT_ID="myhealth-ui";
+              window.__env.KEYCLOAK_TREATER_CLIENT_ID="myhealth-therapist-ui";
+              window.__env.MYHEALTH_SERVICE_URL="https://myhealth-service-dev1.apps.ocp.tst.sos.eu";
+              window.__env.MYHEALTH_HOST_URL="https://myhealth-client-web-dev1.apps.ocp.tst.sos.eu";
+            }(this));
+          environment: |-
+            export const environment = {
+              appVersion: '%APP_VERSION%',
+              version: require('../../package.json').version,
+              production: false,
+              test: false,
+              local: false
+            };
+  drschmerzen:
+    values:
+      framework: ubi
+      replicaCount: 0
+      image:
+        repository: quay.sos.eu/healthcare/drschmerzen
+        tag: 1.0-20230503.085323.767
+        pullSecret: healthcare-healthcare-quay-secret
+      ubi:
+        livenessProbe:
+          timeoutSeconds: 2
+        readinessProbe:
+          timeoutSeconds: 2
+        resources:
+          limits:
+            memory: 384Mi
+          requests:
+            cpu: 15m
+            memory: 192Mi
+      routes:
+        - host: drschmerzen-dev1.apps.ocp.tst.sos.eu
+      extraEnv:
+        - name: APP_CONFIG
+          value: config.py
+      extraEnvFrom:
+        - secretRef:
+            name: drschmerzen-app-properties
+pipelines:
+  promotion:
+    values:
+      framework: promotion
+      git:
+        source: "https://git.sos.eu/scm/hj/healthcare-journey-config-dev1.git"
+  communications-platform:
+    values:
+      framework: maven
+      git:
+        source: 'git@git.sos.eu:HJ/communications-platform.git'
+      image:
+        openjdk: 'registry.access.redhat.com/ubi8/openjdk-17:1.13-1.1655306439'
+      mavenPackageTargetPath: target/quarkus-app
+      native: false
+      pipelineRunExtraParams:
+        - name: SKIP_SONAR
+          value: 'true'
+        - name: JDK_VERSION
+          value: '17'
+        - name: sonarAuthToken
+          value: squ_b3dce68c5a0a7bdae958e35b26b1a793a2ce1d6a
+        - name: teamsOnFailureNotifyUrl
+          value: "https://soseu.webhook.office.com/webhookb2/68edc6ad-9b0f-4fe0-b3df-63e011f5d593@5f3aee10-f259-4c5f-a52c-1dc66f5ae0ca/IncomingWebhook/f320c41879584b92b6243c60489cd341/8a8651fe-2e4e-44fa-8341-27a560056e08"
+        - name: teamsNotifyUrl
+          value: "https://soseu.webhook.office.com"
+  crm-providers-sync:
+    values:
+      framework: maven
+      git:
+        source: 'git@git.sos.eu:HJ/crm-providers-sync.git'
+      image:
+        openjdk: 'registry.access.redhat.com/ubi8/openjdk-17:1.13-1.1655306439'
+      mavenPackageTargetPath: target/quarkus-app
+      native: false
+      pipelineRunExtraParams:
+        - name: SKIP_SONAR
+          value: 'true'
+        - name: JDK_VERSION
+          value: '17'
+        - name: sonarAuthToken
+          value: squ_0550e1cab9388384564d068831f1a5e65f578430
+        - name: teamsOnFailureNotifyUrl
+          value: "https://soseu.webhook.office.com/webhookb2/68edc6ad-9b0f-4fe0-b3df-63e011f5d593@5f3aee10-f259-4c5f-a52c-1dc66f5ae0ca/IncomingWebhook/f320c41879584b92b6243c60489cd341/8a8651fe-2e4e-44fa-8341-27a560056e08"
+        - name: teamsNotifyUrl
+          value: "https://soseu.webhook.office.com"
+  video-meetings-consumer:
+    values:
+      framework: maven
+      git:
+        source: 'git@git.sos.eu:HJ/video-meetings-consumer.git'
+      image:
+        openjdk: 'registry.access.redhat.com/ubi8/openjdk-17:1.13-1.1655306439'
+      mavenPackageTargetPath: target/quarkus-app
+      native: false
+      pipelineRunExtraParams:
+        - name: SKIP_SONAR
+          value: 'true'
+        - name: JDK_VERSION
+          value: '17'
+        - name: sonarAuthToken
+          value: squ_01300f94f57ecc256c62e550038f11175434a6c5
+        - name: teamsOnFailureNotifyUrl
+          value: "https://soseu.webhook.office.com/webhookb2/68edc6ad-9b0f-4fe0-b3df-63e011f5d593@5f3aee10-f259-4c5f-a52c-1dc66f5ae0ca/IncomingWebhook/f320c41879584b92b6243c60489cd341/8a8651fe-2e4e-44fa-8341-27a560056e08"
+        - name: teamsNotifyUrl
+          value: "https://soseu.webhook.office.com"
+  teams-meetings-controller:
+    values:
+      framework: maven
+      git:
+        source: 'git@git.sos.eu:hj/teams-meetings-controller.git'
+      image:
+        openjdk: 'registry.access.redhat.com/ubi8/openjdk-17:1.13-1.1655306439'
+      mavenPackageTargetPath: target/quarkus-app
+      native: false
+      pipelineRunExtraParams:
+        - name: SKIP_SONAR
+          value: 'true'
+        - name: JDK_VERSION
+          value: '17'
+        - name: sonarAuthToken
+          value: test
+        - name: teamsOnFailureNotifyUrl
+          value: "https://soseu.webhook.office.com/webhookb2/68edc6ad-9b0f-4fe0-b3df-63e011f5d593@5f3aee10-f259-4c5f-a52c-1dc66f5ae0ca/IncomingWebhook/f320c41879584b92b6243c60489cd341/8a8651fe-2e4e-44fa-8341-27a560056e08"
+        - name: teamsNotifyUrl
+          value: "https://soseu.webhook.office.com"
+  case-portal-frontend:
+    values:
+      framework: npm
+      git:
+        source: "git@git.sos.eu:hj/case-portal-frontend.git"
+      resources:
+        storage: 2Gi
+      image:
+        nodejs: "registry.access.redhat.com/ubi8/nodejs-16:1-58"
+      pipelineRunExtraParams:
+        - name: SKIP_PUPPETEER
+          value: "true"
+        - name: SKIP_NG_TEST
+          value: "true"
+        - name: SKIP_STATIC_ANALYZE
+          value: "true"
+  one-time-links-controller:
+    values:
+      framework: maven
+      git:
+        source: 'git@git.sos.eu:hj/one-time-links-controller.git'
+      image:
+        openjdk: 'registry.access.redhat.com/ubi8/openjdk-17:1.13-1.1655306439'
+      mavenPackageTargetPath: target/quarkus-app
+      pipelineRunExtraParams:
+        - name: VERSION_TAG
+          value: ''
+        - name: JDK_VERSION
+          value: '17'
+        - name: SKIP_SONAR
+          value: 'true'
+        - name: teamsOnFailureNotifyUrl
+          value: "https://soseu.webhook.office.com/webhookb2/68edc6ad-9b0f-4fe0-b3df-63e011f5d593@5f3aee10-f259-4c5f-a52c-1dc66f5ae0ca/IncomingWebhook/f320c41879584b92b6243c60489cd341/8a8651fe-2e4e-44fa-8341-27a560056e08"
+        - name: teamsNotifyUrl
+          value: "https://soseu.webhook.office.com"
+  communication-service:
+    values:
+      framework: maven
+      git:
+        source: 'git@git.sos.eu:hj/communication-service.git'
+      image:
+        openjdk: 'registry.access.redhat.com/ubi8/openjdk-17:1.13-1.1655306439'
+      mavenPackageTargetPath: target/quarkus-app
+      native: false
+      pipelineRunExtraParams:
+        - name: VERSION_TAG
+          value: ''
+        - name: JDK_VERSION
+          value: '17'
+        - name: SKIP_SONAR
+          value: 'true'
+        - name: teamsOnFailureNotifyUrl
+          value: "https://soseu.webhook.office.com/webhookb2/68edc6ad-9b0f-4fe0-b3df-63e011f5d593@5f3aee10-f259-4c5f-a52c-1dc66f5ae0ca/IncomingWebhook/f320c41879584b92b6243c60489cd341/8a8651fe-2e4e-44fa-8341-27a560056e08"
+        - name: teamsNotifyUrl
+          value: "https://soseu.webhook.office.com"
+  case-portal-service:
+    values:
+      framework: maven
+      git:
+        source: 'git@git.sos.eu:hj/case-portal-service.git'
+      image:
+        openjdk: 'registry.access.redhat.com/ubi8/openjdk-17:1.13-1.1655306439'
+      mavenPackageTargetPath: target/quarkus-app
+      native: false
+      pipelineRunExtraParams:
+        - name: SKIP_SONAR
+          value: 'true'
+        - name: JDK_VERSION
+          value: '17'
+        - name: sonarAuthToken
+          value: 0bdf67023bac4e77442eeca4bfd316fd9ab9e182
+        - name: teamsOnFailureNotifyUrl
+          value: "https://soseu.webhook.office.com/webhookb2/68edc6ad-9b0f-4fe0-b3df-63e011f5d593@5f3aee10-f259-4c5f-a52c-1dc66f5ae0ca/IncomingWebhook/f320c41879584b92b6243c60489cd341/8a8651fe-2e4e-44fa-8341-27a560056e08"
+        - name: teamsNotifyUrl
+          value: "https://soseu.webhook.office.com"
+  sos-microservice-generator:
+    values:
+      framework: maven
+      git:
+        source: 'git@git.sos.eu:hj/sos-microservice-generator.git'
+      image:
+        openjdk: 'registry.access.redhat.com/ubi8/openjdk-17:1.13-1.1655306439'
+      mavenPackageTargetPath: target/quarkus-app
+      native: false
+      pipelineRunExtraParams:
+        - name: SKIP_SONAR
+          value: 'true'
+        - name: JDK_VERSION
+          value: '17'
+        - name: sonarAuthToken
+          value: 0bdf67023bac4e77442eeca4bfd316fd9ab9e182
+        - name: teamsOnFailureNotifyUrl
+          value: "https://soseu.webhook.office.com/webhookb2/68edc6ad-9b0f-4fe0-b3df-63e011f5d593@5f3aee10-f259-4c5f-a52c-1dc66f5ae0ca/IncomingWebhook/f320c41879584b92b6243c60489cd341/8a8651fe-2e4e-44fa-8341-27a560056e08"
+        - name: teamsNotifyUrl
+          value: "https://soseu.webhook.office.com"
+  myhealth-service:
+    values:
+      framework: maven
+      git:
+        source: 'git@git.sos.eu:hj/myhealth-service.git'
+      image:
+        openjdk: 'registry.access.redhat.com/ubi8/openjdk-17:1.13-1.1655306439'
+      mavenPackageTargetPath: target/quarkus-app
+      native: false
+      pipelineRunExtraParams:
+        - name: SKIP_SONAR
+          value: 'true'
+        - name: JDK_VERSION
+          value: '17'
+        - name: sonarAuthToken
+          value: 0bdf67023bac4e77442eeca4bfd316fd9ab9e182
+        - name: teamsOnFailureNotifyUrl
+          value: "https://soseu.webhook.office.com/webhookb2/68edc6ad-9b0f-4fe0-b3df-63e011f5d593@5f3aee10-f259-4c5f-a52c-1dc66f5ae0ca/IncomingWebhook/f320c41879584b92b6243c60489cd341/8a8651fe-2e4e-44fa-8341-27a560056e08"
+        - name: teamsNotifyUrl
+          value: "https://soseu.webhook.office.com"
+  myhealth-client-web:
+    values:
+      framework: npm
+      git:
+        source: "git@git.sos.eu:hj/myhealth-client-web.git"
+      resources:
+        storage: 2Gi
+      pipelineRunExtraParams:
+        - name: NODEJS_TEST_IMAGE
+          value: 'quay.sos.eu/sos/nodejs-chrome:14.21.3-1'
+        - name: CHROMIUM_FLAGS
+          value: "--no-sandbox"
+        - name: SKIP_PUPPETEER
+          value: "true"
+        - name: SKIP_NPM_TEST
+          value: "true"
+        - name: SKIP_NG_TEST
+          value: "true"
+        - name: SKIP_TEST_COVERAGE
+          value: "true"
+  drschmerzen:
+    values:
+      framework: python
+      git:
+        source: "git@git.sos.eu:hj/drschmerzen.git"
+      pipelineRunExtraParams:
+        - name: SKIP_TESTS
+          value: "true"

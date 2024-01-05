@@ -1,0 +1,415 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": 80,
+  "iteration": 1692872938506,
+  "links": [],
+  "panels": [
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "hiddenSeries": false,
+      "id": 2,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.5.17",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "sum(increase(http_server_requests_seconds_count{namespace=\"$namespace\", container=\"$container\"}[5m])) by (container)",
+          "interval": "",
+          "legendFormat": "requests for {{container}}",
+          "refId": "A"
+        },
+        {
+          "exemplar": true,
+          "expr": "sum(increase(http_server_requests_seconds_count{namespace=\"$namespace\", container=\"$container\", status=~\"5.+\"}[5m])) by (container)",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "errors for {{container}}",
+          "refId": "B"
+        },
+        {
+          "exemplar": true,
+          "expr": "sum(increase(http_server_requests_seconds_count{namespace=\"$namespace\", container=\"$container\", status=~\"4.+\"}[5m])) by (container)",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "400 replies for {{container}}",
+          "refId": "C"
+        }
+      ],
+      "thresholds": [],
+      "timeRegions": [],
+      "title": "Rate and Errors",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "$$hashKey": "object:87",
+          "format": "short",
+          "label": null,
+          "logBase": 2,
+          "max": "4096",
+          "min": null,
+          "show": true
+        },
+        {
+          "$$hashKey": "object:88",
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "hiddenSeries": false,
+      "id": 4,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.5.17",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "rate(http_server_requests_seconds_sum{namespace=\"$namespace\",container=\"$container\"}[5m]) / rate(http_server_requests_seconds_count{namespace=\"$namespace\",container=\"$container\"}[5m])\n",
+          "interval": "",
+          "legendFormat": "{{method}} - {{uri}} - {{status}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Duration",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "$$hashKey": "object:144",
+          "format": "short",
+          "label": null,
+          "logBase": 2,
+          "max": "4096",
+          "min": null,
+          "show": true
+        },
+        {
+          "$$hashKey": "object:145",
+          "decimals": 0,
+          "format": "short",
+          "label": null,
+          "logBase": 2,
+          "max": "4096",
+          "min": "0",
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    }
+  ],
+  "schemaVersion": 27,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "allValue": null,
+        "current": {
+          "selected": true,
+          "text": "healthcare-journey-dev1",
+          "value": "healthcare-journey-dev1"
+        },
+        "datasource": null,
+        "definition": "label_values(http_client_requests_seconds_count, namespace)",
+        "description": null,
+        "error": null,
+        "hide": 0,
+        "includeAll": false,
+        "label": "Namespace",
+        "multi": false,
+        "name": "namespace",
+        "options": [
+          {
+            "selected": false,
+            "text": "case-tst",
+            "value": "case-tst"
+          },
+          {
+            "selected": false,
+            "text": "roadside-assistance-api-dev1",
+            "value": "roadside-assistance-api-dev1"
+          },
+          {
+            "selected": false,
+            "text": "roadside-assistance-api-uat",
+            "value": "roadside-assistance-api-uat"
+          },
+          {
+            "selected": false,
+            "text": "case-dev1",
+            "value": "case-dev1"
+          },
+          {
+            "selected": false,
+            "text": "vehicle-dev1",
+            "value": "vehicle-dev1"
+          },
+          {
+            "selected": false,
+            "text": "vehicle-tst",
+            "value": "vehicle-tst"
+          },
+          {
+            "selected": true,
+            "text": "healthcare-journey-dev1",
+            "value": "healthcare-journey-dev1"
+          },
+          {
+            "selected": false,
+            "text": "secca-dev7",
+            "value": "secca-dev7"
+          },
+          {
+            "selected": false,
+            "text": "finance-dev7",
+            "value": "finance-dev7"
+          },
+          {
+            "selected": false,
+            "text": "healthcare-internal-dev1",
+            "value": "healthcare-internal-dev1"
+          },
+          {
+            "selected": false,
+            "text": "roadside-assistance-api-tst",
+            "value": "roadside-assistance-api-tst"
+          },
+          {
+            "selected": false,
+            "text": "coverage-tst",
+            "value": "coverage-tst"
+          },
+          {
+            "selected": false,
+            "text": "invoice-tst",
+            "value": "invoice-tst"
+          },
+          {
+            "selected": false,
+            "text": "roadrunner-tst",
+            "value": "roadrunner-tst"
+          },
+          {
+            "selected": false,
+            "text": "roadrunner-uat",
+            "value": "roadrunner-uat"
+          },
+          {
+            "selected": false,
+            "text": "roadrunner-dev1",
+            "value": "roadrunner-dev1"
+          },
+          {
+            "selected": false,
+            "text": "healthcare-booking-uat",
+            "value": "healthcare-booking-uat"
+          },
+          {
+            "selected": false,
+            "text": "healthcare-booking-tst",
+            "value": "healthcare-booking-tst"
+          }
+        ],
+        "query": {
+          "query": "label_values(http_client_requests_seconds_count, namespace)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 0,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "video-meetings-consumer",
+          "value": "video-meetings-consumer"
+        },
+        "datasource": null,
+        "definition": "label_values(http_client_requests_seconds_count{namespace=\"${namespace}\"}, container)",
+        "description": null,
+        "error": null,
+        "hide": 0,
+        "includeAll": false,
+        "label": "Container",
+        "multi": false,
+        "name": "container",
+        "options": [
+          {
+            "selected": true,
+            "text": "video-meetings-consumer",
+            "value": "video-meetings-consumer"
+          },
+          {
+            "selected": false,
+            "text": "communication-service",
+            "value": "communication-service"
+          },
+          {
+            "selected": false,
+            "text": "myhealth-service",
+            "value": "myhealth-service"
+          }
+        ],
+        "query": {
+          "query": "label_values(http_client_requests_seconds_count{namespace=\"${namespace}\"}, container)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 0,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "RED - Journey",
+  "uid": "bBkWvPgSz",
+  "version": 12
+}

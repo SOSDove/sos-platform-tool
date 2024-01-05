@@ -1,0 +1,33 @@
+---
+apiVersion: infinispan.org/v1
+kind: Infinispan
+metadata:
+  name: drschmerzen
+spec:
+  replicas: 2
+  service:
+    type: DataGrid
+  expose: 
+    type: Route
+  security:
+    endpointEncryption:
+      type: None
+
+---
+apiVersion: infinispan.org/v2alpha1
+kind: Cache
+metadata:
+  name: drschmerzen
+spec:
+  clusterName: drschmerzen
+  name: demo
+  updates:
+    strategy: recreate
+  template: |-
+    replicatedCache:
+      mode: "SYNC"
+      statistics: "true"
+      encoding:
+        mediaType: "application/x-protostream"
+      persistence:
+        fileStore: ~

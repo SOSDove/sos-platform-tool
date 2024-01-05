@@ -1,0 +1,9 @@
+apiVersion: integreatly.org/v1alpha1
+kind: GrafanaDashboard
+metadata:
+  labels:
+    grafana: grafana-app
+  name: team-journey-red-dashboard
+spec:
+  json: |
+    {{.Files.Get "dashboards/team-journey-red.json" | nindent 4 }}

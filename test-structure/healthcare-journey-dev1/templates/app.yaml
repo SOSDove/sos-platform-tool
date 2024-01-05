@@ -1,0 +1,36 @@
+{{- range $deploymentname, $deployment := .Values.deployments }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name:  {{ $deploymentname }}-{{ $.Values.global.namespace }}
+  namespace: healthcare
+  labels:
+    {{- if $deployment.values.feature }}
+    feature: {{ $deployment.values.feature }}
+    {{- end }}
+    component: {{ $deploymentname }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $.Values.global.argoproject }}
+  source:
+    repoURL: {{ default "https://git.sos.eu/scm/ocppt/helm-chart-app.git" $deployment.repoURL }}
+    path: {{ default "." $deployment.path }}
+    targetRevision: {{ default $.Values.global.charts.app.targetRevision $deployment.targetRevision }}
+    helm:
+      releaseName: {{ $deploymentname }}
+      values: |
+        name: {{ $deploymentname }}
+{{ toYaml $deployment.values | nindent 8 }}
+{{ toYaml $.Values.global | nindent 8 }}
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: {{ $.Values.global.namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+---
+{{- end }}
